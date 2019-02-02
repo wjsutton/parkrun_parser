@@ -1,4 +1,3 @@
-#setwd("C:/Users/sutto/Documents/R/Parkrun parser")
 source("parkrun_functions.R")
 
 # backup report and find latest date
@@ -27,6 +26,6 @@ if(new_date>report_date){
   
   library(googlesheets)
   suppressMessages(library(dplyr))
-  
+  gs_auth(token = "googlesheets_token.rds")
   gs_upload("w4h_parkrun_report.csv", sheet_title = "w4h_parkrun_report",overwrite = TRUE)
 }

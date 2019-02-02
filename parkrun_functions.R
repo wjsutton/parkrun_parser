@@ -23,7 +23,7 @@ extract_parkrun_cc_report_urls <- function(urls) {
   if(min<=max){
     
     for(i in min:max){
-      
+      print(i)
       extract_link <- substr(links[i],
                              str_locate_all(links[i],'"')[[1]][1]+1,
                              str_locate_all(links[i],'"')[[1]][2]-1)
@@ -46,7 +46,28 @@ extract_parkrun_cc_report_urls <- function(urls) {
       date <- as.Date(paste0(substr(date,7,10),'-',substr(date,4,5),'-',substr(date,1,2)))
       parkrun_table <- readHTMLTable(go_to_link)
       
-      parkrun_results <- parkrun_table$`results`
+      # if the results page is blank, and this is the latest result week then try latest results page
+      if(length(is.na(parkrun_table$`results`))==0 & date>=(Sys.Date()-7)){
+        latest_results_page <- paste0(substr(extract_link,1,str_locate(extract_link,'/results/')[2]),'latestresults/')
+        
+        Sys.sleep(25)
+        go_to_link <- getURL(latest_results_page)
+        link_xml <- read_html(go_to_link)
+        title <- html_nodes(link_xml,"h2")
+        
+        parkrun <- as.character(substr(title,5,str_locate(title,'#')[1]-2))
+        number <- as.integer(str_extract(str_extract(title,'\\d{1,6} '),'\\d{1,6}'))
+        date <- str_extract(title,'\\d{1,2}/\\d{1,2}/\\d{2,4}')
+        date <- as.Date(paste0(substr(date,7,10),'-',substr(date,4,5),'-',substr(date,1,2)))
+        parkrun_table <- readHTMLTable(go_to_link)
+      }
+    
+      if(is.na(parkrun_table$`results`)){
+        source("rselenium_workaround.R")
+      }
+      else {
+        parkrun_results <- parkrun_table$`results`
+      }
       parkrun_results <- parkrun_results %>% mutate_if(is.factor, as.character)
       
       # handling French parkrun reports
