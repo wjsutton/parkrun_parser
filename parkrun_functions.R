@@ -11,6 +11,9 @@ extract_parkrun_cc_report_urls <- function(urls) {
     url <- paste0(urls[a])
   
   page <- getURL(url[length(url)])
+  date <- as.Date(substr(page,
+                         str_locate_all(page,'who participated at a parkrun on ')[[1]][1,2]+1,
+                         str_locate_all(page,'who participated at a parkrun on ')[[1]][1,2]+10))
   page <- read_html(page)
   
   links <- html_nodes(page, "p a")
@@ -30,6 +33,9 @@ extract_parkrun_cc_report_urls <- function(urls) {
       # removing dashes in parkrun name because they fail ,e.g. black-park
       extract_link <- gsub('black-park','blackpark',extract_link)
       
+      # converting http: to https:
+      extract_link <- ifelse(substr(extract_link,1,5)=="http:",paste0("https",substr(extract_link,5,nchar(extract_link))),extract_link)
+      
       # handling polish parkrun links
       if (substr(extract_link,19,21)=='.pl') {
         extract_link <- gsub('/results/','/rezultaty/',extract_link)
@@ -42,8 +48,6 @@ extract_parkrun_cc_report_urls <- function(urls) {
       
       parkrun <- as.character(substr(title,5,str_locate(title,'#')[1]-2))
       number <- as.integer(str_extract(str_extract(title,'\\d{1,6} '),'\\d{1,6}'))
-      date <- str_extract(title,'\\d{1,2}/\\d{1,2}/\\d{2,4}')
-      date <- as.Date(paste0(substr(date,7,10),'-',substr(date,4,5),'-',substr(date,1,2)))
       parkrun_table <- readHTMLTable(go_to_link)
       
       # if the results page is blank, and this is the latest result week then try latest results page
@@ -57,15 +61,14 @@ extract_parkrun_cc_report_urls <- function(urls) {
         
         parkrun <- as.character(substr(title,5,str_locate(title,'#')[1]-2))
         number <- as.integer(str_extract(str_extract(title,'\\d{1,6} '),'\\d{1,6}'))
-        date <- str_extract(title,'\\d{1,2}/\\d{1,2}/\\d{2,4}')
-        date <- as.Date(paste0(substr(date,7,10),'-',substr(date,4,5),'-',substr(date,1,2)))
         parkrun_table <- readHTMLTable(go_to_link)
       }
     
-      if(is.na(parkrun_table$`results`)){
-        source("rselenium_workaround.R")
+      if(is.na(nrow(parkrun_table$`results`))){
+        source("C:/Users/sutto/Documents/Scheduled Tasks/Parkrun Parser/rselenium_workaround.R")
       }
-      else {
+      
+      if(is.data.frame(parkrun_table$`results`)) {
         parkrun_results <- parkrun_table$`results`
       }
       parkrun_results <- parkrun_results %>% mutate_if(is.factor, as.character)
@@ -103,6 +106,9 @@ extract_parkrun_cc_report_urls <- function(urls) {
                                                  gender_position = as.integer(gender_position),
                                                  total_runs = as.integer(total_runs),
                                                  badges = as.integer(badges))
+      # removing leading and trailing whitespace
+      parkrun_df$parkrun <- gsub("^\\s+|\\s+$", "",parkrun_df$parkrun)
+      
       if (!exists('full_df')){
         full_df <- parkrun_df
       } else {
